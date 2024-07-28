@@ -1,0 +1,68 @@
+
+body {
+    background-color: #f8f9fa;
+}
+
+.container {
+    margin-top: 50px;
+}
+
+.form-container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    width: 140px;
+}
+
+h1 {
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.lead {
+    color: #555;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004a9a;
+}
+
+.form-control {
+    border-radius: 4px;
+    border-color: #ddd;
+    box-shadow: none;
+}
+
+.password-container {
+    position: relative;
+}
+
+.password-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #007bff;
+}
+
+.password-icon:hover {
+    color: #0056b3;
+}
+
+.text-danger {
+    text-align: left;
+    display: block;
+    margin-top: 5px;
+}
+

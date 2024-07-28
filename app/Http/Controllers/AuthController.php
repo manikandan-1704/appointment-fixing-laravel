@@ -15,10 +15,23 @@ use App\Http\Requests\UpdateUserRequest;
 use Carbon\Carbon;
 use App\Mail\OTPMail;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Otp;
+use App\Mail\ForgotPasswordMail;
 
 
 class AuthController extends Controller
 {
+
+    public function showRegisterForm()
+    {
+        return view('auth.register');
+    }
+
+    public function showVerifyOtpForm()
+    {
+        return view('auth.verify-otp');
+    }
+    
     public function register(UserRequest $request)
     {
         try {
@@ -34,7 +47,7 @@ class AuthController extends Controller
 
             Mail::to($user->email)->send(new OTPMail($otp));
 
-            return response()->json(['success' => true, 'message' => 'Verification OTP sent'], 201);
+            return response()->json(['success' => true, 'message' => 'Verification OTP sent', 'email' => $user->email], 201);
         } catch (Exception $e) {
             Log::info('Register Error: ' . $e->getMessage());
             return response()->json(['success' => false,'error' => 'Something went wrong'], 500);
@@ -153,4 +166,104 @@ public function verifyOtp(Request $request)
     }
 }
 
+public function sendOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+        try{
+        $user = User::where('email', $request->email)->first();
+
+        $otp = rand(100000, 999999);
+        Otp::create([
+            'user_id' => $user->id,
+            'otp' => $otp,
+        ]);
+
+        Mail::to($user->email)->send(new ForgotPasswordMail($otp));
+
+        return response()->json(['success' => true, 'message' => 'OTP sent to your email'], 200);
+    } catch (Exception $e) {
+        Log::info('Send OTP Error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'Something went wrong'], 500);
+    }
+    }
+
+    public function verifyForgotPasswordOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|digits:6',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        $otp = Otp::where('user_id', $user->id)->where('otp', $request->otp)->first();
+
+        if (!$otp) {
+            return response()->json(['success' => false, 'message' => 'Invalid OTP'], 400);
+        }
+
+        if (Carbon::parse($otp->created_at)->addMinutes(10)->isPast()) {
+            return response()->json(['success' => false, 'message' => 'OTP expired'], 400);
+        }
+
+        return response()->json(['success' => true, 'message' => 'OTP verified'], 200);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|digits:6',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        $otp = Otp::where('user_id', $user->id)->where('otp', $request->otp)->first();
+
+        if (!$otp) {
+            return response()->json(['success' => false, 'message' => 'Invalid OTP'], 400);
+        }
+
+        if (Carbon::parse($otp->created_at)->addMinutes(10)->isPast()) {
+            return response()->json(['success' => false, 'message' => 'OTP expired'], 400);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        $otp->delete();
+
+        return response()->json(['success' => true, 'message' => 'Password reset successfully'], 200);
+    }
+
+    public function resendOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        try {
+            $user = User::where('email', $request->email)->first();
+            if ($user) {
+                $otp = rand(100000, 999999);
+
+                $user->update([
+                    'otp' => $otp,
+                    'otp_expires_at' => Carbon::now()->addMinutes(10),
+                ]);
+
+                Mail::to($user->email)->send(new OTPMail($otp));
+
+                return response()->json(['success' => true, 'message' => 'Verification OTP resent'], 200);
+            }
+
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        } catch (Exception $e) {
+            Log::info('Resend OTP Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => 'Something went wrong'], 500);
+        }
+    }
 }
+
+
